@@ -59,7 +59,12 @@ class Feed extends Component {
       })
       .then(resData => {
         this.setState({
-          posts: resData.posts,
+          posts: resData.posts.map(post => {
+            return {
+              ...post,
+              imagePath: post.imageUrl
+            };
+          }),
           totalPosts: resData.totalItems,
           postsLoading: false
         });
@@ -102,72 +107,66 @@ class Feed extends Component {
   };
 
   finishEditHandler = postData => {
-
     this.setState({
       editLoading: true
     });
-
-    // Set up data (with image!)
+    const formData = new FormData();
+    formData.append('title', postData.title);
+    formData.append('content', postData.content);
+    formData.append('image', postData.image);
     let url = 'http://localhost:8080/feed/post';
     let method = 'POST';
     if (this.state.editPost) {
-      url = 'URL';
+      url = 'http://localhost:8080/feed/post/' + this.state.editPost._id;
+      method = 'PUT';
     }
 
     fetch(url, {
       method: method,
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        title: postData.title,
-        content: postData.content
-      })
+      body: formData
     })
-    .then(res => {
-      if (res.status !== 200 && res.status !== 201) {
-        throw new Error('Creating or editing a post failed!');
-      }
-      return res.json();
-    })
-    .then(resData => {
-
-      const post = {
-        _id: resData.post._id,
-        title: resData.post.title,
-        content: resData.post.content,
-        creator: resData.post.creator,
-        createdAt: resData.post.createdAt
-      };
-    
-      this.setState(prevState => {
-        let updatedPosts = [...prevState.posts];
-        if (prevState.editPost) {
-          const postIndex = prevState.posts.findIndex(
-            p => p._id === prevState.editPost._id
-          );
-          updatedPosts[postIndex] = post;
-        } else if (prevState.posts.length < 2) {
-          updatedPosts = prevState.posts.concat(post);
+      .then(res => {
+        if (res.status !== 200 && res.status !== 201) {
+          throw new Error('Creating or editing a post failed!');
         }
-        return {
-          posts: updatedPosts,
+        return res.json();
+      })
+      .then(resData => {
+        console.log(resData);
+        const post = {
+          _id: resData.post._id,
+          title: resData.post.title,
+          content: resData.post.content,
+          creator: resData.post.creator,
+          createdAt: resData.post.createdAt
+        };
+        this.setState(prevState => {
+          let updatedPosts = [...prevState.posts];
+          if (prevState.editPost) {
+            const postIndex = prevState.posts.findIndex(
+              p => p._id === prevState.editPost._id
+            );
+            updatedPosts[postIndex] = post;
+          } else if (prevState.posts.length < 2) {
+            updatedPosts = prevState.posts.concat(post);
+          }
+          return {
+            posts: updatedPosts,
+            isEditing: false,
+            editPost: null,
+            editLoading: false
+          };
+        });
+      })
+      .catch(err => {
+        console.log(err);
+        this.setState({
           isEditing: false,
           editPost: null,
-          editLoading: false
-        };
+          editLoading: false,
+          error: err
+        });
       });
-    })
-    .catch(err => {
-      console.log(err);
-      this.setState({
-        isEditing: false,
-        editPost: null,
-        editLoading: false,
-        error: err
-      });
-    });
-
   };
 
   statusInputChangeHandler = (input, value) => {
